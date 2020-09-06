@@ -3,6 +3,7 @@
 import sys
 import pickle
 sys.path.append("../tools/")
+import numpy as np
 
 from feature_format import featureFormat, targetFeatureSplit
 from tester import dump_classifier_and_data
@@ -18,7 +19,7 @@ features_list = ['poi','salary', 'deferral_payments', 'total_payments', 'exercis
 with open("final_project_dataset.pkl", "rb") as data_file:
     data_dict = pickle.load(data_file)
 
-print('total data points: %d' % (len(data_dict)))
+
 # flag = 0
 # for key, value in data_dict.items():
 #     print(key)
@@ -38,9 +39,51 @@ print('total data points: %d' % (len(data_dict)))
 ### Task 2: Remove outliers
 data_dict.pop('TOTAL') # removing TOTAL key from data_dict as it is not anyone's record
 
+print('total legit data points: %d' % (len(data_dict)))
+
 ### Task 3: Create new feature(s)
 from sklearn.preprocessing import MinMaxScaler
 minmaxscaler = MinMaxScaler()
+
+bonus = []
+salary = []
+total_stock_value = []
+total_payments = []
+for key, value in data_dict.items():
+    if value['bonus']=='NaN' or value['salary']=='NaN' or value['total_stock_value']=='NaN' or value['total_payments']=='NaN':
+        bonus.append(0.)
+        salary.append(0.)
+        total_stock_value.append(0.)
+        total_payments.append(0.)
+    else:
+        bonus.append(value['bonus'])
+        salary.append(value['salary'])
+        total_stock_value.append(value['total_stock_value'])
+        total_payments.append(value['total_payments'])
+
+bonus = np.array(bonus).reshape((-1, 1))
+salary = np.array(salary).reshape((-1, 1))
+total_stock_value = np.array(total_stock_value).reshape((-1, 1))
+total_payments = np.array(total_payments).reshape((-1, 1))
+
+#rescale values between 0 and 1
+bonus_minmax = minmaxscaler.fit_transform(bonus)
+salary_minmax = minmaxscaler.fit_transform(salary)
+total_stock_value_minmax = minmaxscaler.fit_transform(total_stock_value)
+total_payments_minmax = minmaxscaler.fit_transform(total_payments)
+
+# print(len(data_dict), len(bonus_minmax))
+
+#add new features to dictionary
+i = 0
+for key, value in data_dict.items():
+    if bonus_minmax[i][0] == 0.:
+        value['bonus_salary_ratio'] = 0.
+        value['total_stock_total_payment_ratio'] = 0. 
+    else:
+        value['bonus_salary_ratio'] = bonus_minmax[i][0] / salary_minmax[i][0]
+        value['total_stock_total_payment_ratio'] = total_stock_value_minmax[i][0] / total_payments_minmax[i][0]
+    i += 1
 
 
 ### Store to my_dataset for easy export below.
@@ -68,8 +111,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA 
 
-clf = GaussianNB()
-estimators = [('reduce_dim', PCA(n_components=5)), ('clf', clf)]
+clf = RandomForestClassifier()
+estimators = [('reduce_dim', PCA(n_components=7)), ('clf', clf)]
 pipe = Pipeline(estimators)
 
 ### Task 5: Tune your classifier to achieve better than .3 precision and recall 
@@ -83,6 +126,22 @@ pipe = Pipeline(estimators)
 from sklearn.model_selection import train_test_split
 features_train, features_test, labels_train, labels_test = \
     train_test_split(features, labels, test_size=0.3, random_state=42)
+
+
+#train and validate
+def train_and_validate(clf, features_train, features_test, labels_train, labels_test):
+    from sklearn.metrics import accuracy_score, precision_score, recall_score
+    clf.fit(features_train, labels_train)
+    pred = clf.predict(features_test)
+    accuracy = accuracy_score(labels_test, pred)
+    precision = precision_score(labels_test, pred)
+    recall = recall_score(labels_test, pred)
+    print('Classifier: {}'.format(clf))
+    print('Accuracy: {}, Precision: {}, Recall: {}'.format(accuracy, precision, recall))
+    print()
+
+
+train_and_validate(pipe, features_train, features_test, labels_train, labels_test)
 
 ### Task 6: Dump your classifier, dataset, and features_list so anyone can
 ### check your results. You do not need to change anything below, but make sure
