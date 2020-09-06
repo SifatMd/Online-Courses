@@ -12,7 +12,8 @@ from tester import dump_classifier_and_data
 ### features_list is a list of strings, each of which is a feature name.
 ### The first feature must be "poi".
 features_list = ['poi','salary', 'deferral_payments', 'total_payments', 'exercised_stock_options', \
-        'bonus', 'expenses', 'long_term_incentive', 'total_stock_value', 'shared_receipt_with_poi'] # You will need to use more features
+        'bonus', 'expenses', 'long_term_incentive', 'total_stock_value', 'shared_receipt_with_poi', \
+            'bonus_salary_ratio', 'total_stock_total_payment_ratio'] # You will need to use more features
 
 
 ### Load the dictionary containing the dataset
@@ -111,8 +112,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 from sklearn.decomposition import PCA 
 
-clf = RandomForestClassifier()
-estimators = [('reduce_dim', PCA(n_components=7)), ('clf', clf)]
+clf = AdaBoostClassifier(n_estimators=100, learning_rate=.8)
+estimators = [('reduce_dim', PCA(n_components=5)), ('clf', clf)]
 pipe = Pipeline(estimators)
 
 ### Task 5: Tune your classifier to achieve better than .3 precision and recall 
@@ -125,23 +126,29 @@ pipe = Pipeline(estimators)
 # Example starting point. Try investigating other evaluation techniques!
 from sklearn.model_selection import train_test_split
 features_train, features_test, labels_train, labels_test = \
-    train_test_split(features, labels, test_size=0.3, random_state=42)
+    train_test_split(features, labels, test_size=0.25, random_state=42)
 
 
 #train and validate
 def train_and_validate(clf, features_train, features_test, labels_train, labels_test):
-    from sklearn.metrics import accuracy_score, precision_score, recall_score
+    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
     clf.fit(features_train, labels_train)
     pred = clf.predict(features_test)
+    #print(labels_test)
     accuracy = accuracy_score(labels_test, pred)
     precision = precision_score(labels_test, pred)
     recall = recall_score(labels_test, pred)
+    f1score = f1_score(labels_test, pred)
     print('Classifier: {}'.format(clf))
-    print('Accuracy: {}, Precision: {}, Recall: {}'.format(accuracy, precision, recall))
+    print('Accuracy: {:.4f}, Precision: {:.4f}, Recall: {:.4f}, F1-Score: {:.4f}'.format(accuracy, precision, recall, f1score))
     print()
 
 
 train_and_validate(pipe, features_train, features_test, labels_train, labels_test)
+
+### BEST RESULTS
+# Classifier: Pipeline(steps=[('reduce_dim', PCA(n_components=4)), ('clf', GaussianNB())])
+# Accuracy: 0.9722, Precision: 1.0000, Recall: 0.7500, F1-Score: 0.8571
 
 ### Task 6: Dump your classifier, dataset, and features_list so anyone can
 ### check your results. You do not need to change anything below, but make sure
