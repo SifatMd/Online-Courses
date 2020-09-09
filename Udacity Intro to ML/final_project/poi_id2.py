@@ -402,6 +402,7 @@ def adaboost_classifier(features_train, features_test, labels_train, labels_test
     precision = precision_score(labels_test, pred)
     recall = recall_score(labels_test, pred)
     print('Adaboost Accuracy: {}, Precision: {}, Recall: {}'.format(accuracy, precision, recall))
+    return classifier
 
 
 #clf = naive_bayes_classifier(features_train, features_test, labels_train, labels_test)
